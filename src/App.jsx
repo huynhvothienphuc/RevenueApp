@@ -25,7 +25,7 @@ function App() {
   const roadmap = useMemo(() => calculateRoadmap(data), [data])
   const plan = useMemo(() => planRepayment(data), [data])
 
-  if (route?.bare) return <LandingPage data={data} roadmap={roadmap} />
+  if (route?.bare) return <LandingPage roadmap={roadmap} />
 
   return (
     <AppLayout

@@ -3,11 +3,11 @@ import { CalendarDays } from 'lucide-react'
 import { MoneyTimeline } from '@/components/money-timeline'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatDayPadded } from '@/lib/format'
-import { interestTimeline } from '@/lib/timelines'
+import { holdingTimeline } from '@/lib/timelines'
 import { useToday } from '@/lib/today'
 
-// "/": a bare page with only today's date and the interest timeline (no sidebar, no header).
-export function LandingPage({ data, roadmap }) {
+// "/": a bare page with only today's date and the money held each month (no sidebar, no header).
+export function LandingPage({ roadmap }) {
   const today = useToday()
 
   return (
@@ -21,7 +21,7 @@ export function LandingPage({ data, roadmap }) {
       </div>
       <Card className="w-full max-w-5xl">
         <CardContent>
-          <MoneyTimeline points={interestTimeline(data, roadmap)} accentCurrent stackOnMobile />
+          <MoneyTimeline points={holdingTimeline(roadmap)} accentCurrent stackOnMobile />
         </CardContent>
       </Card>
     </main>
