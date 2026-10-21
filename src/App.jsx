@@ -6,6 +6,7 @@ import { HOME, pages } from '@/lib/pages'
 import { planRepayment } from '@/lib/repayment'
 import { navigate, usePath } from '@/lib/router'
 import { useAppData } from '@/lib/store'
+import { CheckinPage } from '@/pages/checkin'
 import { DebtsPage } from '@/pages/debts'
 import { LandingPage } from '@/pages/landing'
 import { OverviewPage } from '@/pages/overview'
@@ -25,6 +26,9 @@ function App() {
   const roadmap = useMemo(() => calculateRoadmap(data), [data])
   const plan = useMemo(() => planRepayment(data), [data])
 
+  if (page === 'checkin') {
+    return <CheckinPage checkins={data.checkins} onToggle={actions.toggleCheckin} onSaveGoal={actions.setCheckinGoal} />
+  }
   if (route?.bare) return <LandingPage roadmap={roadmap} />
 
   return (

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import seed from '@/data/data.json'
 import { endOfMonth, todayKey } from '@/lib/format'
+import { DEFAULT_CHECKINS, toggleDay } from '@/lib/checkin'
 import { buildPeriods, periodStatus, syncDisabled } from '@/lib/interest'
 
 const STORAGE_KEY = 'revenueapp:v2'
@@ -21,6 +22,8 @@ const withSync = (data) => ({
   ...data,
   periods: syncDisabled(data.periods, todayKey()),
   debts: (data.debts ?? []).map(normalizeDebt),
+  // Office check-ins (added later: older data gets the default Oct–Dec goal).
+  checkins: { ...DEFAULT_CHECKINS, ...data.checkins, days: { ...data.checkins?.days } },
 })
 
 export function isValidData(value) {
@@ -111,6 +114,9 @@ export function useAppData() {
     addDebt: (debt) => setData((d) => ({ ...d, debts: [...d.debts, { ...debt, id: crypto.randomUUID() }] })),
     updateDebt: (id, patch) =>
       setData((d) => ({ ...d, debts: d.debts.map((debt) => (debt.id === id ? { ...debt, ...patch } : debt)) })),
+    // Office check-in: past/today toggles "done", future toggles "plan".
+    toggleCheckin: (day) => setData((d) => ({ ...d, checkins: toggleDay(d.checkins, day, todayKey()) })),
+    setCheckinGoal: ({ goal, from, to }) => setData((d) => ({ ...d, checkins: { ...d.checkins, goal, from, to } })),
     removeDebt: (id) => setData((d) => ({ ...d, debts: d.debts.filter((debt) => debt.id !== id) })),
     // Priority order: move a debt one place up (-1) or down (+1).
     moveDebt: (id, step) =>

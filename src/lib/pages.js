@@ -1,4 +1,4 @@
-import { HandCoins, LayoutDashboard } from 'lucide-react'
+import { CalendarCheck, HandCoins, LayoutDashboard } from 'lucide-react'
 
 // hidden: not listed in the sidebar, only reachable by its URL.
 // bare: rendered on its own, without the sidebar and header.
@@ -7,6 +7,7 @@ export const pages = [
   { id: 'landing', path: '/', title: 'Trang chủ', hidden: true, bare: true },
   { id: 'overview', path: '/revenue', title: 'Tổng quan', icon: LayoutDashboard },
   { id: 'debts', path: '/debts', title: 'Nợ', icon: HandCoins, hidden: true },
+  { id: 'checkin', path: '/checkin', title: 'Check-in', icon: CalendarCheck, bare: true },
 ]
 
 export const HOME = pages[0].path
