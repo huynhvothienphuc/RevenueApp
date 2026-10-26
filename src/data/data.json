@@ -1,12 +1,20 @@
 {
-  "version": 2,
+  "version": 3,
   "principal": 253000000,
   "depositMonth": "2026-09",
   "interestRate": 0.1,
   "interestCap": 30000000,
   "periods": [
     { "payoutDate": "2026-10-27", "deposit": 0, "disabled": false },
-    { "payoutDate": "2026-11-27", "deposit": 0, "disabled": false },
+    {
+      "payoutDate": "2026-11-27",
+      "deposit": 0,
+      "disabled": false,
+      "withdrawals": [
+        { "id": "r1", "amount": 3700000 },
+        { "id": "r2", "amount": 8600000 }
+      ]
+    },
     { "payoutDate": "2026-12-27", "deposit": 0, "disabled": false },
     { "payoutDate": "2027-01-27", "deposit": 0, "disabled": false },
     { "payoutDate": "2027-02-27", "deposit": 0, "disabled": false },

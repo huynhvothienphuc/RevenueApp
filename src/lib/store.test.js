@@ -25,6 +25,34 @@ describe('mergeSeed', () => {
     expect(mergeSeed({ debts: [] }, seed).debts.map((d) => d.id)).toEqual(['k1', 'k6'])
   })
 
+  it('adds withdrawals that are new in data.json to the saved periods, once', () => {
+    const seedV3 = {
+      version: 3,
+      debts: [],
+      periods: [{ payoutDate: '2026-11-27', withdrawals: [{ id: 'r1', amount: 3.7 }, { id: 'r2', amount: 8.6 }] }],
+    }
+    const saved = {
+      version: 2,
+      debts: [],
+      periods: [
+        { payoutDate: '2026-10-27', deposit: 0 },
+        { payoutDate: '2026-11-27', deposit: 0, withdrawals: [{ id: 'r1', amount: 3.7 }] },
+      ],
+    }
+    const merged = mergeSeed(saved, seedV3)
+    expect(merged.periods[0]).toBe(saved.periods[0])
+    expect(merged.periods[1].withdrawals.map((w) => w.id)).toEqual(['r1', 'r2']) // r1 not duplicated
+    // Up to date: a withdrawal deleted later is not added back.
+    const deleted = { ...merged, periods: [merged.periods[0], { ...merged.periods[1], withdrawals: [] }] }
+    expect(mergeSeed(deleted, seedV3)).toBe(deleted)
+  })
+
+  it('does not duplicate a withdrawal already typed in by hand (same amount, other id)', () => {
+    const seedV3 = { version: 3, debts: [], periods: [{ payoutDate: '2026-11-27', withdrawals: [{ id: 'r1', amount: 3.7 }] }] }
+    const saved = { version: 2, debts: [], periods: [{ payoutDate: '2026-11-27', withdrawals: [{ id: 'uuid', amount: 3.7 }] }] }
+    expect(mergeSeed(saved, seedV3).periods[0].withdrawals.map((w) => w.id)).toEqual(['uuid'])
+  })
+
   it('does nothing once the saved data is up to date (a deleted debt stays deleted)', () => {
     const saved = { version: 2, debts: [] }
     expect(mergeSeed(saved, seed)).toBe(saved)

@@ -29,6 +29,13 @@ export function formatDate(date) {
   return `${Number(day)}/${Number(month)}/${year}`
 }
 
+// "2026-10-27" -> "27/10" (no year: the timeline marks where a new year starts)
+export function formatDayMonth(date) {
+  if (!date) return ''
+  const [, month, day] = date.split('-')
+  return `${Number(day)}/${Number(month)}`
+}
+
 // Today as "YYYY-MM-DD" in local time
 export function todayKey(date = new Date()) {
   const pad = (n) => String(n).padStart(2, '0')

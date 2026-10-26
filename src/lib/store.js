@@ -39,8 +39,9 @@ export function isValidData(value) {
 
 /**
  * Brings saved data up to date with a newer src/data/data.json (its "version" went up):
- * debts added to the file are appended to the saved list. Everything already saved is kept as is,
- * and a debt already there (same id or same name) is not added again.
+ * debts and withdrawals added to the file are appended to the saved data. Everything already saved
+ * is kept as is, and a debt (same id or name) or withdrawal (same id or amount) already there is not added again.
+ * Runs once per version, so something deleted afterwards stays deleted.
  */
 export function mergeSeed(saved, seedData = seed) {
   const seedVersion = seedData.version ?? 1
@@ -48,7 +49,14 @@ export function mergeSeed(saved, seedData = seed) {
   const debts = saved.debts ?? []
   const known = new Set(debts.flatMap((d) => [d.id, d.name?.trim().toLowerCase()]))
   const added = (seedData.debts ?? []).filter((d) => !known.has(d.id) && !known.has(d.name?.trim().toLowerCase()))
-  return { ...saved, version: seedVersion, debts: [...debts, ...clone(added)] }
+  const seedWithdrawals = new Map((seedData.periods ?? []).map((p) => [p.payoutDate, p.withdrawals ?? []]))
+  const periods = (saved.periods ?? []).map((p) => {
+    // Same id, or same amount (typed in by hand before it was in data.json): already there.
+    const have = new Set((p.withdrawals ?? []).flatMap((w) => [w.id, Number(w.amount)]))
+    const missing = (seedWithdrawals.get(p.payoutDate) ?? []).filter((w) => !have.has(w.id) && !have.has(w.amount))
+    return missing.length ? { ...p, withdrawals: [...(p.withdrawals ?? []), ...clone(missing)] } : p
+  })
+  return { ...saved, version: seedVersion, debts: [...debts, ...clone(added)], periods }
 }
 
 function load() {
@@ -91,6 +99,21 @@ export function useAppData() {
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('focus', resync)
     }
+  }, [])
+
+  // Another tab saved a change (e.g. a withdrawal entered on /revenue while / is open): pick it up.
+  useEffect(() => {
+    const onStorage = (event) => {
+      if (event.key !== STORAGE_KEY || !event.newValue) return
+      try {
+        const saved = JSON.parse(event.newValue)
+        if (isValidData(saved)) setData(withSync(mergeSeed(saved)))
+      } catch {
+        // Corrupt value: keep what this tab has.
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
   }, [])
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { endOfMonth, formatDate, formatMonth, formatShort } from '@/lib/format'
+import { endOfMonth, formatDate, formatDayMonth, formatMonth, formatShort } from '@/lib/format'
 
 // Interest timeline: deposit month + one point per payout, total pinned. Same numbers as the roadmap table.
 export function interestTimeline(data, roadmap) {
@@ -19,31 +19,49 @@ export function interestTimeline(data, roadmap) {
   ]
 }
 
-// Money held during each month: interest paid on the 27th counts from the next month
-// (27/10 pays 278,3tr -> November holds 278,3tr). One point per month, from the first payout's month
-// to the month after the last payout. The current point is the money on hand today.
+// Money held from each payout to the next, labelled by the date it starts ("27/10": 278,3tr, held
+// until 27/11). The first point starts a month before the first payout (27/9: the principal), the
+// last one at the last payout. yearBreak marks the first point of a new year (shown as a divider).
+// The current point is the money on hand today.
 export function holdingTimeline(roadmap) {
   const { rows, threshold } = roadmap
   if (rows.length === 0) return []
   const last = rows[rows.length - 1]
   const points = [
-    // During a period's month the account holds the opening balance (+ any deposit), until the 27th.
-    ...rows.map((row) => ({ key: row.payoutDate, month: row.payoutDate.slice(0, 7), amount: row.base, status: row.status })),
-    // After the last payout: its total, in the following month.
+    // Until a period's payout the account holds its opening balance (+ deposit − withdrawals).
+    ...rows.map((row, i) => ({
+      key: row.payoutDate,
+      date: i === 0 ? addMonths(row.payoutDate, -1) : rows[i - 1].payoutDate,
+      amount: row.base,
+      status: row.status,
+      // Money taken out right after the previous payout: "Lãi: 278,3tr · Đã rút: 12,3tr · Còn: 266tr".
+      lines:
+        row.withdrawn > 0
+          ? [
+              `Lãi: ${formatShort(row.opening)}`,
+              `Đã rút: ${formatShort(row.withdrawn)}`,
+              `Còn: ${formatShort(row.base)}`,
+            ]
+          : [],
+    })),
+    // After the last payout: its total.
     {
       key: 'after',
-      month: nextMonth(last.payoutDate.slice(0, 7)),
+      date: last.payoutDate,
       amount: last.total,
       // It is "now" only once the last payout has passed.
       status: last.status === 'past' ? 'current' : 'future',
+      lines: [],
     },
   ]
   const reachIndex = points.findIndex((p) => p.amount >= threshold)
   return points.map((p, i) => ({
     key: p.key,
-    label: formatMonth(p.month),
+    label: formatDayMonth(p.date),
     value: formatShort(p.amount),
     status: p.status,
+    lines: p.lines,
+    yearBreak: i > 0 && p.date.slice(0, 4) !== points[i - 1].date.slice(0, 4) ? p.date.slice(0, 4) : null,
     note:
       [p.status === 'current' && 'Hiện tại', i === reachIndex && `Đạt ${formatShort(threshold)}`]
         .filter(Boolean)
@@ -51,10 +69,11 @@ export function holdingTimeline(roadmap) {
   }))
 }
 
-// "2027-05" -> "2027-06", "2026-12" -> "2027-01"
-function nextMonth(month) {
-  const [year, m] = month.split('-').map(Number)
-  return m === 12 ? `${year + 1}-01` : `${year}-${String(m + 1).padStart(2, '0')}`
+// "2026-10-27", -1 -> "2026-09-27" (payouts keep their day of the month)
+function addMonths(date, count) {
+  const [year, month, day] = date.split('-').map(Number)
+  const d = new Date(year, month - 1 + count, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
 // Debt page: "+30tr" new money at the payout (the plan's "Ngân sách"), "+1,1tr dư" for change kept

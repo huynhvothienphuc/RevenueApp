@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
  * highlight: true colours the point (e.g. a month with a debt payment).
  * lines: optional list of short rows under the month (e.g. "−5tr Khoản 1 ✓").
  * emphasis: true marks a closing point (e.g. money left once debts are paid).
+ * yearBreak: "2027" on the first point of a new year: a divider before it (labels then omit the year).
  * accentCurrent: colours the current point (blue) and its column, to spot "now" at a glance.
  * Scrolls sideways when there isn't room for every month, or with stackOnMobile turns into a
  * vertical list when its container is narrow (phones).
@@ -38,6 +39,7 @@ function VerticalTimeline({ points, accentCurrent = false }) {
             aria-current={current ? 'date' : undefined}
             className={cn(
               'grid grid-cols-[4.5rem_1.5rem_1fr] items-center gap-2 rounded-lg px-2',
+              point.yearBreak && 'border-t border-dashed',
               accent && 'bg-sky-50 dark:bg-sky-950/40',
             )}
           >
@@ -52,6 +54,7 @@ function VerticalTimeline({ points, accentCurrent = false }) {
               )}
             >
               {point.label}
+              {point.yearBreak && <span className="block text-[10px] text-muted-foreground">{point.yearBreak}</span>}
             </span>
             <div className="relative flex h-full min-h-11 items-center justify-center">
               {i > 0 && <span className="absolute top-0 left-1/2 h-1/2 w-0.5 -translate-x-1/2 bg-border" />}
@@ -74,14 +77,21 @@ function VerticalTimeline({ points, accentCurrent = false }) {
               />
             </div>
             <div className="flex min-w-0 items-baseline justify-between gap-2 py-2">
-              <span
-                className={cn(
-                  'font-semibold tabular-nums',
-                  accent ? 'text-sky-600 dark:text-sky-400' : point.status === 'future' && 'text-muted-foreground',
-                )}
-              >
-                {point.value ?? '—'}
-              </span>
+              <div className="flex min-w-0 flex-col">
+                <span
+                  className={cn(
+                    'font-semibold tabular-nums',
+                    accent ? 'text-sky-600 dark:text-sky-400' : point.status === 'future' && 'text-muted-foreground',
+                  )}
+                >
+                  {point.value ?? '—'}
+                </span>
+                {point.lines?.map((line) => (
+                  <span key={line} className="text-[11px] leading-tight text-muted-foreground tabular-nums">
+                    {line}
+                  </span>
+                ))}
+              </div>
               {point.note && (
                 <span
                   className={cn(
@@ -114,10 +124,17 @@ function HorizontalTimeline({ points, minColumn = '4.5rem', accentCurrent = fals
               key={point.key}
               aria-current={point.status === 'current' ? 'date' : undefined}
               className={cn(
-                'flex min-w-0 flex-col items-center gap-1.5 rounded-lg py-2 text-center',
+                'relative flex min-w-0 flex-col items-center gap-1.5 rounded-lg py-2 text-center',
                 accent && 'bg-sky-50 dark:bg-sky-950/40',
               )}
             >
+              {point.yearBreak && (
+                <span
+                  title={point.yearBreak}
+                  className="absolute inset-y-0 left-0 border-l border-dashed border-muted-foreground/40"
+                  aria-hidden="true"
+                />
+              )}
               <span
                 className={cn(
                   'text-sm font-semibold whitespace-nowrap tabular-nums',
