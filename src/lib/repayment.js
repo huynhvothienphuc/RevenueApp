@@ -1,11 +1,11 @@
-import { capThreshold, periodStatus } from '@/lib/interest'
+import { capThreshold, periodStatus, withdrawnIn } from '@/lib/interest'
 
 /**
  * Debt repayment plan on top of the interest roadmap.
  *
  * Interest is added each payout exactly like calculateRoadmap (10%, capped). The principal never goes
  * below the threshold (300tr), so interest stays at the 30tr cap every month: debts are paid only
- * from the money above it. No outside money is assumed (only deposits entered on the roadmap).
+ * from the money above it. No outside money is assumed (only deposits and withdrawals entered on the roadmap).
  *
  * Debts are paid in instalments, strictly in priority order (the order of the list): each payout,
  * the money above the threshold goes to the debt whose turn it is, then to the next one.
@@ -44,9 +44,9 @@ export function planRepayment({ principal, interestRate, interestCap, periods, d
   let balance = principal
   let started = false
   // One payout: add interest, then pay debts in priority order from the money above the threshold.
-  const runPeriod = (payoutDate, status, deposit, extended) => {
+  const runPeriod = (payoutDate, status, deposit, withdrawn, extended) => {
     const opening = balance
-    const base = opening + deposit
+    const base = opening + deposit - withdrawn
     const interest = Math.min(Math.round(base * interestRate), interestCap)
     const total = base + interest
     if (total >= threshold) started = true
@@ -94,13 +94,14 @@ export function planRepayment({ principal, interestRate, interestCap, periods, d
 
   const rows = periods.map((period, index) => {
     const status = periodStatus(periods, index)
-    return runPeriod(period.payoutDate, status, status === 'future' ? 0 : Number(period.deposit) || 0, false)
+    const deposit = status === 'future' ? 0 : Number(period.deposit) || 0
+    return runPeriod(period.payoutDate, status, deposit, withdrawnIn(period), false)
   })
 
   // Debts left after the roadmap: keep going month by month (same day, no deposits) until paid.
   const owed = () => queue.some((d) => d.remaining > 0)
   for (let i = 0; owed() && rows.length > 0 && i < MAX_EXTRA_MONTHS; i++) {
-    rows.push(runPeriod(addMonths(rows[rows.length - 1].payoutDate, 1), 'future', 0, true))
+    rows.push(runPeriod(addMonths(rows[rows.length - 1].payoutDate, 1), 'future', 0, 0, true))
   }
 
   const debtsOut = queue.map((d) => ({

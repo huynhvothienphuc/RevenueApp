@@ -110,6 +110,25 @@ export function useAppData() {
         if (index < 0 || periodStatus(periods, index) !== 'current') return d
         return { ...d, periods: periods.map((p, i) => (i === index ? { ...p, deposit: value ?? 0 } : p)) }
       }),
+    // Money taken out at the start of a period. Past periods are fixed; current and future ones accept it.
+    addWithdrawal: (payoutDate, amount) =>
+      setData((d) => ({
+        ...d,
+        periods: d.periods.map((p) =>
+          p.payoutDate === payoutDate && !p.disabled && amount > 0
+            ? { ...p, withdrawals: [...(p.withdrawals ?? []), { id: crypto.randomUUID(), amount }] }
+            : p,
+        ),
+      })),
+    removeWithdrawal: (payoutDate, id) =>
+      setData((d) => ({
+        ...d,
+        periods: d.periods.map((p) =>
+          p.payoutDate === payoutDate && !p.disabled
+            ? { ...p, withdrawals: (p.withdrawals ?? []).filter((w) => w.id !== id) }
+            : p,
+        ),
+      })),
     setEndMonth: (month) => month && setData((d) => ({ ...d, periods: buildPeriods(d.periods, month) })),
     addDebt: (debt) => setData((d) => ({ ...d, debts: [...d.debts, { ...debt, id: crypto.randomUUID() }] })),
     updateDebt: (id, patch) =>

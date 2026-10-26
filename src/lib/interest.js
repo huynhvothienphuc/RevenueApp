@@ -1,7 +1,8 @@
 /**
  * The single place where money is calculated. Only principal and interest matter:
  *
- *   base     = opening + deposit         (deposit = money added during the period)
+ *   base     = opening + deposit − withdrawn
+ *              (deposit = money added during the period, withdrawn = money taken out at its start)
  *   interest = min(base × rate, cap)     (10%/month, at most 30tr)
  *   total    = base + interest           (becomes the next period's opening)
  *
@@ -12,6 +13,12 @@
 // Money at which interest hits the cap (30tr / 10% = 300tr).
 export function capThreshold({ interestRate, interestCap }) {
   return interestRate > 0 ? interestCap / interestRate : Infinity
+}
+
+// Money taken out at the start of a period (e.g. 3,7tr + 8,6tr after the 27/10 payout -> November).
+// Withdrawals are planned spending: unlike deposits they count in future periods too.
+export function withdrawnIn(period) {
+  return (period.withdrawals ?? []).reduce((sum, w) => sum + (Number(w.amount) || 0), 0)
 }
 
 export function periodStatus(periods, index) {
@@ -28,11 +35,22 @@ export function calculateRoadmap({ principal, interestRate, interestCap, periods
     const status = periodStatus(periods, index)
     // Only past (fixed) and current periods can hold a deposit; future ones count as 0.
     const deposit = status === 'future' ? 0 : Number(period.deposit) || 0
+    const withdrawn = withdrawnIn(period)
     const opening = total
-    const base = opening + deposit
+    const base = opening + deposit - withdrawn
     const interest = Math.min(Math.round(base * interestRate), interestCap)
     total = base + interest
-    return { payoutDate: period.payoutDate, status, opening, deposit, base, interest, total }
+    return {
+      payoutDate: period.payoutDate,
+      status,
+      opening,
+      deposit,
+      withdrawals: period.withdrawals ?? [],
+      withdrawn,
+      base,
+      interest,
+      total,
+    }
   })
 
   return {

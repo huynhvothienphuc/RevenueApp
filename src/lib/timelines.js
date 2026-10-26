@@ -14,6 +14,7 @@ export function interestTimeline(data, roadmap) {
         [row.status === 'current' && 'Hiện tại', i === reachIndex && `Đạt ${formatShort(threshold)}`]
           .filter(Boolean)
           .join(' · ') || null,
+      lines: row.withdrawals.map((w) => `−${formatShort(w.amount)} rút đầu kỳ`),
     })),
   ]
 }

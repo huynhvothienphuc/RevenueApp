@@ -1,8 +1,10 @@
-import { Lock } from 'lucide-react'
+import { Lock, Plus, X } from 'lucide-react'
+import { useState } from 'react'
 
 import { MoneyInput } from '@/components/money-input'
 import { MoneyTimeline } from '@/components/money-timeline'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -33,6 +35,58 @@ function StatusBadge({ status }) {
   }
   if (status === 'current') return <Badge>Kỳ hiện tại</Badge>
   return <Badge variant="outline">Dự kiến</Badge>
+}
+
+// Money taken out at the start of a period: one chip per withdrawal, plus an input while the period is open.
+function WithdrawalsCell({ row, actions }) {
+  const [amount, setAmount] = useState(null)
+  // Bumped after each add to remount the input, which clears what was typed even while focused.
+  const [formKey, setFormKey] = useState(0)
+  const editable = row.status !== 'past'
+  if (!editable && row.withdrawals.length === 0) return <span className="text-muted-foreground">—</span>
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {row.withdrawals.map((w) => (
+        <Badge key={w.id} variant="outline" className="tabular-nums">
+          −{formatShort(w.amount)}
+          {editable && (
+            <button
+              type="button"
+              aria-label={`Xoá khoản rút ${formatShort(w.amount)}`}
+              className="-mr-1 rounded-sm hover:text-destructive"
+              onClick={() => actions.removeWithdrawal(row.payoutDate, w.id)}
+            >
+              <X className="size-3" />
+            </button>
+          )}
+        </Badge>
+      ))}
+      {editable && (
+        <form
+          className="flex items-center gap-1"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!(amount > 0)) return
+            actions.addWithdrawal(row.payoutDate, amount)
+            setAmount(null)
+            setFormKey((k) => k + 1)
+          }}
+        >
+          <MoneyInput
+            key={formKey}
+            aria-label={`Rút đầu kỳ ${formatDate(row.payoutDate)}`}
+            className="h-8 w-32 tabular-nums"
+            placeholder="0 ₫"
+            value={amount}
+            onChange={setAmount}
+          />
+          <Button type="submit" size="icon" variant="outline" aria-label="Thêm khoản rút" disabled={!(amount > 0)}>
+            <Plus />
+          </Button>
+        </form>
+      )}
+    </div>
+  )
 }
 
 export function OverviewPage({ data, roadmap, actions }) {
@@ -69,7 +123,8 @@ export function OverviewPage({ data, roadmap, actions }) {
           </CardTitle>
           <CardDescription>
             Lãi {Math.round(data.interestRate * 100)}%/tháng, tối đa {formatVND(data.interestCap)}. Chỉ sửa được tiền
-            gửi thêm của kỳ hiện tại; kỳ đã nhận lãi được cố định.
+            gửi thêm của kỳ hiện tại; tiền rút (trừ vào đầu kỳ) nhập được cho kỳ hiện tại và các kỳ tới. Kỳ đã nhận
+            lãi được cố định.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
@@ -92,6 +147,7 @@ export function OverviewPage({ data, roadmap, actions }) {
                 <TableHead>Mốc</TableHead>
                 <TableHead className="text-right">Gốc</TableHead>
                 <TableHead>Gửi thêm</TableHead>
+                <TableHead>Rút</TableHead>
                 <TableHead className="text-right">Lãi</TableHead>
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead>Trạng thái</TableHead>
@@ -101,6 +157,7 @@ export function OverviewPage({ data, roadmap, actions }) {
               <TableRow>
                 <TableCell className="font-medium">{formatMonth(data.depositMonth)}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatVND(data.principal)}</TableCell>
+                <TableCell className="text-muted-foreground">—</TableCell>
                 <TableCell className="text-muted-foreground">—</TableCell>
                 <TableCell className="text-right text-muted-foreground">—</TableCell>
                 <TableCell className="text-right font-semibold tabular-nums">{formatVND(data.principal)}</TableCell>
@@ -130,6 +187,9 @@ export function OverviewPage({ data, roadmap, actions }) {
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <WithdrawalsCell row={row} actions={actions} />
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     +{formatVND(row.interest)}

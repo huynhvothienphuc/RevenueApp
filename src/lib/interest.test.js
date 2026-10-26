@@ -5,9 +5,14 @@ import { buildPeriods, calculateRoadmap, syncDisabled } from '@/lib/interest'
 const tr = 1_000_000
 const dates = ['2026-10-27', '2026-11-27', '2026-12-27', '2027-01-27', '2027-02-27', '2027-03-27', '2027-04-27', '2027-05-27']
 
-function setup({ deposits = {}, today = '2026-10-21' } = {}) {
+function setup({ deposits = {}, withdrawals = {}, today = '2026-10-21' } = {}) {
   const periods = syncDisabled(
-    dates.map((payoutDate) => ({ payoutDate, deposit: deposits[payoutDate] ?? 0, disabled: false })),
+    dates.map((payoutDate) => ({
+      payoutDate,
+      deposit: deposits[payoutDate] ?? 0,
+      withdrawals: (withdrawals[payoutDate] ?? []).map((amount, i) => ({ id: `w${i}`, amount })),
+      disabled: false,
+    })),
     today,
   )
   return calculateRoadmap({ principal: 253 * tr, interestRate: 0.1, interestCap: 30 * tr, periods })
@@ -43,6 +48,17 @@ describe('calculateRoadmap', () => {
     expect(r.rows.map((row) => row.status)).toEqual(['current', ...Array(7).fill('future')])
     expect(r.rows[2].deposit).toBe(0)
     expect(r.finalTotal).toBe(486.13 * tr)
+  })
+
+  it('withdrawals come off the start of their period, even a future one', () => {
+    // 27/10 pays 278,3tr; 3,7tr then 8,6tr are taken out -> November starts at 266tr.
+    const r = setup({ today: '2026-10-26', withdrawals: { '2026-11-27': [3.7 * tr, 8.6 * tr] } })
+    expect(r.rows[0].total).toBe(278.3 * tr)
+    expect(r.rows[1].status).toBe('future')
+    expect(r.rows[1].withdrawn).toBe(12.3 * tr)
+    expect(r.rows[1].base).toBe(266 * tr)
+    expect(r.rows[1].interest).toBe(26.6 * tr)
+    expect(r.rows[1].total).toBe(292.6 * tr)
   })
 
   it('keeps a fixed past deposit in the calculation', () => {
